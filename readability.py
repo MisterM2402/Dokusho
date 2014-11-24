@@ -1,12 +1,16 @@
-from nltk.tokenize import word_tokenize, sent_tokenize
+import re
+#from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import gutenberg
 
 
 class ReadabilityText():
 
     def __init__(self, text):
-        self.words = word_tokenize(text)
-        self.sents = sent_tokenize(text)
+        self.words = re.split(r'\W+', text)  # word_tokenize(text)
+        self.stemmed_words = [SnowballStemmer('english').stem(w) for w in self.words]
+        self.poly_syl_words = [w for w in self.words if syl_count(w) > 2]
+        self.sents = re.split(r'[.!?]+\W+', text)  # sent_tokenize(text)
         self.len = len(self.words)
         self.avg_sent_len = calc_avg_sent_len(self.sents)
         self.avg_syl = calc_avg_syl(self.words)
@@ -17,7 +21,9 @@ def flesch_kincaid(r_text):
 
 
 def dale_chall(r_text, easy_words):
-    words = r_text.words
+    words = r_text.stemmed_words
+    easy_words = set(easy_words) & set([w.lower() for w in words])
+    #print set([w.lower() for w in words]) - easy_words
     dw_count = 0
     for w in words:
         if w.lower() not in easy_words:
@@ -29,32 +35,40 @@ def dale_chall(r_text, easy_words):
     return 0.1579 * dw_percentage + 0.0496 * r_text.avg_sent_len + adjust
 
 
+def gunning_fog(r_text):
+    return 0.4 * (r_text.avg_sent_len + 100 * len(r_text.poly_syl_words) / len(r_text.words))
+
+
 def calc_avg_sent_len(sents):
     sent_lens = []
     for s in sents:
-        sent_lens.append(len(word_tokenize(s)))
+        sent_lens.append(len(re.split(r'\W+', s)))
     return sum(sent_lens) / len(sents)
 
 
-def syl_count(words):
-    count = 0
+def syl_count(word):
     vowels = 'aeiouy'
+    w = word.lower()
+    prev_l = 'x'
+    count = 0
+    for l in w:
+        if prev_l not in vowels and l in vowels:
+            count += 1
+        prev_l = l
+    if len(w) > 2 and w[-2] not in vowels and w[-1] == 'e':
+        count -= 1
+    return count
+
+
+def syl_count_all(words):
+    count = 0
     for w in words:
-        w = w.lower()
-        prev_l = 'x'
-        w_count = 0
-        for l in w:
-            if prev_l not in vowels and l in vowels:
-                w_count += 1
-            prev_l = l
-        if len(w) > 2 and w[-2] not in vowels and w[-1] == 'e':
-            w_count -= 1
-        count += w_count
+        count += syl_count(w)
     return count
 
 
 def calc_avg_syl(words):
-    return 1.0 * syl_count(words) / len(words)
+    return 1.0 * syl_count_all(words) / len(words)
 
 
 if __name__ == '__main__':
@@ -92,15 +106,17 @@ dipped suddenly down, so suddenly that Alice had not a moment to think
 about stopping herself before she found herself falling down a very deep
 well."""
 
-    with open('DaleChallEasyWordList.txt', 'r') as dcewl_file:
-        easy_words = [w.strip('\n') for w in dcewl_file.readlines()]
+    with open('DaleChallStemmed.txt', 'r') as dcewl_file:
+        easy_words = [w.strip() for w in dcewl_file.readlines()]
 
     r_text1 = ReadabilityText(text1)
-    print 'Alice extract', syl_count(r_text1.words), calc_avg_syl(r_text1.words), dale_chall(r_text1, easy_words)
+    print 'Alice extract', syl_count_all(r_text1.words), calc_avg_syl(r_text1.words),\
+        flesch_kincaid(r_text1), dale_chall(r_text1, easy_words), gunning_fog(r_text1)
 
-    for fid in gutenberg.fileids():
-        r_text = ReadabilityText(gutenberg.raw(fid))
-        if fid == 'carroll-alice.txt':
-            print fid, flesch_kincaid(r_text), dale_chall(r_text, easy_words)
+    #for fid in gutenberg.fileids():
+    fid = 'carroll-alice.txt'
+    r_text = ReadabilityText(gutenberg.raw(fid))
+        #if fid == 'carroll-alice.txt':
+    print fid, flesch_kincaid(r_text), dale_chall(r_text, easy_words), gunning_fog(r_text)
         #print fid, len(text.split()), syl_count(text), calc_avg_syl(text)
         #print fid, calc_avg_sent_len(text), alt_avg_sent_len(text)
