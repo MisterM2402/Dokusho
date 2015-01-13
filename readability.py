@@ -16,8 +16,8 @@ class ReadabilityText():
         self.avg_syl = calc_avg_syl(self.words)
 
 
-def flesch_kincaid(r_text):
-    return 0.39 * r_text.avg_sent_len + 11.8 * r_text.avg_syl - 15.59
+def flesch(r_text):
+    return 206.835 - 1.015 * r_text.avg_sent_len - 84.6 * r_text.avg_syl
 
 
 def dale_chall(r_text, easy_words):
@@ -111,12 +111,12 @@ well."""
 
     r_text1 = ReadabilityText(text1)
     print 'Alice extract', syl_count_all(r_text1.words), calc_avg_syl(r_text1.words),\
-        flesch_kincaid(r_text1), dale_chall(r_text1, easy_words), gunning_fog(r_text1)
+        flesch(r_text1), dale_chall(r_text1, easy_words), gunning_fog(r_text1)
 
-    #for fid in gutenberg.fileids():
-    fid = 'carroll-alice.txt'
-    r_text = ReadabilityText(gutenberg.raw(fid))
+    for fid in gutenberg.fileids():
+    #fid = 'carroll-alice.txt'
+        r_text = ReadabilityText(gutenberg.raw(fid))
         #if fid == 'carroll-alice.txt':
-    print fid, flesch_kincaid(r_text), dale_chall(r_text, easy_words), gunning_fog(r_text)
+        print fid, flesch(r_text), dale_chall(r_text, easy_words), gunning_fog(r_text)
         #print fid, len(text.split()), syl_count(text), calc_avg_syl(text)
         #print fid, calc_avg_sent_len(text), alt_avg_sent_len(text)
